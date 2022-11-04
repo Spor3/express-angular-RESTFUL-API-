@@ -4,9 +4,10 @@ const cors = require('cors');
 const sqlite3 = require('sqlite3').verbose()
 const jwt = require('jsonwebtoken');
 const dotenv = require('dotenv');
-
 //Middleware
 const { authenticateToken, controlExistingToken } = require('./middleware/auth.middleware')
+//Service
+const {hashPassword, comparePassword} = require('./_service/hashPassword.service')
 
 // get config vars
 dotenv.config();
@@ -18,7 +19,6 @@ const PORT = process.env.PORT;
 app.use(cors());
 app.use(express.urlencoded({ extended: false }))
 app.use(bodyParser.json())
-
 
 app.get('/drinks', (req, res) => {
 
@@ -56,8 +56,8 @@ app.put('/drinks/:id', authenticateToken, (req, res) => {
 
 app.post('/drinks', authenticateToken, (req, res) => {
     const name = req.body.name
-    db.get('SELECT COUNT(id) FROM Drinks;', [], (err, row) => {
-        const r = ++row['COUNT(id)'];
+    db.get('SELECT MAX(id) FROM Drinks;', [], (err, row) => {
+        const r = ++row['MAX(id)'];
 
         db.run('INSERT INTO Drinks (id,name) VALUES ($id,$name);', {
             $id: r,
@@ -78,10 +78,10 @@ app.post('/drinks', authenticateToken, (req, res) => {
     })
 });
 
-app.post('/register', controlExistingToken, (req, res) => {
+app.post('/register', controlExistingToken, async (req, res) => {
 
     const username = req.body.username;
-    const password = req.body.password;
+    const password = await hashPassword(req.body.password);
 
     db.get('SELECT COUNT(id) FROM Users WHERE email=$username;', {
         $username: username,
@@ -89,11 +89,11 @@ app.post('/register', controlExistingToken, (req, res) => {
         const resultQuery = exsisting['COUNT(id)'];
 
         if (resultQuery === 0) {
-            db.get('SELECT COUNT(id) FROM Users;', [], (err, row) => {
+            db.get('SELECT MAX(id) FROM Users;', [], (err, row) => {
                 if (err)
                     res.send(err)
 
-                const r = ++row['COUNT(id)'];
+                const r = ++row['MAX(id)'];
 
                 db.run('INSERT INTO Users (id,email,password) VALUES ($id,$username,$password);', {
                     $id: r,
@@ -119,20 +119,20 @@ app.post('/login', controlExistingToken, (req, res) => {
     const username = req.body.username;
     const password = req.body.password;
 
-    db.get('SELECT COUNT(id) FROM Users WHERE email=$username AND password=$password;', {
-        $username: username,
-        $password: password
-    }, (err, row) => {
-        const r = row['COUNT(id)'];
-        console.log(r)
+    db.get('SELECT password FROM Users WHERE email=$username;', {
+        $username: username
+    }, async (err, row) => {
+        if(err)
+          res.send(err);
+        
+        const receivedPassword = row.password;
+        const passwordCompare = await comparePassword(password, receivedPassword)
 
-        if (r === 1) {
+        if(passwordCompare){
             const token = generateAccessToken({ username: username });
             res.status(200).json({ token: token, expire: '2h' });
-        } else if (r === 0) {
+        }else {
             res.status(401).send('Unauthorized');
-        } else if (r > 1) {
-            res.send('SHIT')
         }
     })
 });
@@ -141,5 +141,8 @@ function generateAccessToken(username) {
     return jwt.sign(username, process.env.TOKEN_SECRET, { expiresIn: '2h' });
 }
 
+app.listen(PORT, () => console.log(`Listening on port ${PORT}!`))
 
-app.listen(PORT, () => console.log(`Hello world app listening on port ${PORT}!`))
+
+//An Active auth string
+/* eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IkFkbWluIiwiaWF0IjoxNjY3NTUzNjc5LCJleHAiOjE2Njc1NjA4Nzl9.lG-RI8WvqQbWJJ23IuLDBKo9kpcq7SizmawMldNF-UM */
