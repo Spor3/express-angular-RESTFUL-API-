@@ -1,5 +1,9 @@
 const jwt = require('jsonwebtoken');
-
+/* Function that verify if a JWS Token is rigth or not and move on in if rigth
+   Params:
+     req: The request
+     res: The response
+     next: middleware function to move on */
 function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization']
     const token = authHeader && authHeader.split(' ')[1]
@@ -15,7 +19,11 @@ function authenticateToken(req, res, next) {
         next()
     })
 }
-
+/* Function that verify if a JWS Token already existing and move on only if not
+   Params:
+     req: The request
+     res: The response
+     next: middleware function to move on */
 function controlExistingToken(req, res, next) {
 
     const authHeader = req.headers['authorization']
@@ -33,5 +41,5 @@ function controlExistingToken(req, res, next) {
     })
     }
 }
-
+//Export module
 module.exports = {authenticateToken, controlExistingToken};
