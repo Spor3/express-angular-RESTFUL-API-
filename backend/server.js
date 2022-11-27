@@ -5,22 +5,27 @@ const cors = require("cors");
 const sqlite3 = require("sqlite3").verbose();
 const jwt = require("jsonwebtoken");
 const dotenv = require("dotenv");
+
 //Middleware
 const {
   authenticateToken,
   controlExistingToken,
 } = require("./middleware/auth.middleware");
+
 //Hash Password Service
 const {
   hashPassword,
   comparePassword,
 } = require("./_service/hashPassword.service");
+
 // get config vars
 dotenv.config();
+
 //Inizialize db app and PORT
 const db = new sqlite3.Database(process.env.DB_FILE);
 const app = express();
 const PORT = process.env.PORT;
+
 //CORS and BodyParser
 app.use(cors());
 app.use(express.urlencoded({ extended: false }));
@@ -28,13 +33,14 @@ app.use(bodyParser.json());
 
 /* ENDPOINT /drinks */
 
-//GET all Drinks (res NO BODY)
+//GET all Drinks (req NO BODY)
 app.get("/drinks", (req, res) => {
   db.all("SELECT * FROM Drinks;", (err, row) => {
     const r = row;
     res.json({ drinks: r });
   });
 });
+
 /*POST(create) new single drink  
   req(body.name:string)*
   (NEED AUTHENTICATION)*/
@@ -81,6 +87,7 @@ app.get("/drinks/:id", (req, res) => {
     res.json({ drink: r });
   });
 });
+
 /*PUT(update) single drink by id
     req(body.name:string)*
     req(params.id:string)*
@@ -149,6 +156,7 @@ app.post("/register", controlExistingToken, async (req, res) => {
     }
   );
 });
+
 /* POST login user
       req(body.username)*
       req(body.password)* 
@@ -178,6 +186,7 @@ app.post("/login", controlExistingToken, (req, res) => {
     }
   );
 });
+
 /* Function that generate JWT Access Token
     param username:string user Object with personal information(only username)
     return JWT Token
@@ -185,6 +194,7 @@ app.post("/login", controlExistingToken, (req, res) => {
 function generateAccessToken(username) {
   return jwt.sign(username, process.env.TOKEN_SECRET, { expiresIn: "2h" });
 }
+
 //RUN app
 app.listen(PORT, () => console.log(`Listening on port ${PORT}!`));
 
